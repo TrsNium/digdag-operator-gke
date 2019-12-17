@@ -69,9 +69,9 @@ public class GkeOperatorFactory implements OperatorFactory {
             String project_id = params.get("project_id", String.class);
             String zone = params.get("zone", String.class);
 
-            if (params.has("credential_json") || params.has("credential_json_path")) {
-                authCLI(params);
-            }
+            //if (params.has("credential_json") || params.has("credential_json_path")) {
+             //   authCLI(params);
+            //}
 
             // Auth GKECluster master with CLI
             List<String> authGkeCommandList = Arrays.asList("gcloud", "container", "clusters", "get-credentials", cluster, "--zone", zone, "--project", project_id);
@@ -111,33 +111,35 @@ public class GkeOperatorFactory implements OperatorFactory {
             return operator.run();
         }
 
-        private void authCLI(Config params) {
-            String credentialJson = null;
-            try {
-                if (params.has("credential_json")){
-                    credentialJson = params.get("credential_json", String.class);
-                }
-                else if (params.has("credential_json_path")){
-                    String credentialPath = params.get("credential_json_path", String.class);
-                    credentialJson = new String(Files.readAllBytes(Paths.get(credentialPath)));
-                }
-            }
-            catch (IOException e) {
-                throw new ConfigException("Please check gcp credential file and file path.");
-            }
-
-            String authCommand = String.format("echo << EOS %s EOS | openssl base64 -d -A | gcloud auth activate-service-account --key-file=-", credentialJson);
-            List<String> authCommandList = Arrays.asList("/bin/bash", "-c", authCommand);
-            ProcessBuilder pb = new ProcessBuilder(authCommandList);
-            pb.inheritIO();
-            try {
-                final Process p = pb.start();
-                p.waitFor();
-            }
-            catch (IOException | InterruptedException e) {
-                throw Throwables.propagate(e);
-            }
-        }
+// TODO: auth cli with creential json
+//        private void authCLI(Config params) {
+//            String credentialJson = null;
+//            try {
+//                if (params.has("credential_json")){
+//                    credentialJson = params.get("credential_json", String.class).replaceAll("\\n", "");
+//                }
+//                else if (params.has("credential_json_path")){
+//                    String credentialPath = params.get("credential_json_path", String.class);
+//                    credentialJson = new String(Files.readAllBytes(Paths.get(credentialPath))).replaceAll("\\n", "");
+//                }
+//            }
+//            catch (IOException e) {
+//                throw new ConfigException("Please check gcp credential file and file path.");
+//            }
+//
+//            String authCommand = String.format("echo '%s' | openssl base64 -d -A |  gcloud auth activate-service-account --key-file=-", credentialJson);
+//            System.out.println(authCommand);
+//            List<String> authCommandList = Arrays.asList("/bin/bash", "-c", authCommand);
+//            ProcessBuilder pb = new ProcessBuilder(authCommandList);
+//            pb.inheritIO();
+//            try {
+//                final Process p = pb.start();
+//                p.waitFor();
+//            }
+//            catch (IOException | InterruptedException e) {
+//                throw Throwables.propagate(e);
+//            }
+//        }
 
         private String getChildCommandType(Config taskRequestConfig) {
             Config commandConfig = taskRequestConfig.getNestedOrGetEmpty("_command");
