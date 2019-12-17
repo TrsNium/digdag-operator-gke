@@ -1,0 +1,14 @@
+_export:
+  plugin:
+    repositories:
+      - file://${repos}
+      # - https://jitpack.io
+    dependencies:
+      - io.digdag.plugin:digdag-plugin-example:0.1.3
+
++step1:
+  cluster: test-cluster
+  project_id: test
+  zone: asia-east1-a
+  gke>:
+    sh>: echo hoge huga
