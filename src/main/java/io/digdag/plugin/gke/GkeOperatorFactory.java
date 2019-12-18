@@ -1,33 +1,27 @@
 package io.digdag.plugin.gke;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Throwables;
+import com.google.common.collect.ImmutableMap;
 import io.digdag.client.config.Config;
 import io.digdag.client.config.ConfigException;
-import com.google.common.collect.ImmutableMap;
+import io.digdag.spi.CommandExecutor;
+import io.digdag.spi.ImmutableTaskRequest;
 import io.digdag.spi.Operator;
 import io.digdag.spi.OperatorContext;
 import io.digdag.spi.OperatorFactory;
-import io.digdag.spi.TaskResult;
 import io.digdag.spi.TaskRequest;
-import io.digdag.spi.ImmutableTaskRequest;
-import io.digdag.spi.TemplateEngine;
-import io.digdag.util.BaseOperator;
-import io.digdag.util.BaseOperator;
-import com.google.inject.Inject;
-import java.io.IOException;
-
-import java.util.Arrays;
-import java.lang.Throwable;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.List;
-import java.util.ArrayList;
-
-import io.digdag.standards.operator.ShOperatorFactory;
-import io.digdag.standards.operator.RbOperatorFactory;
+import io.digdag.spi.TaskResult;
 import io.digdag.standards.operator.PyOperatorFactory;
-import com.google.common.base.Throwables;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.digdag.spi.CommandExecutor;
+import io.digdag.standards.operator.RbOperatorFactory;
+import io.digdag.standards.operator.ShOperatorFactory;
+import io.digdag.util.BaseOperator;
+
+import java.io.IOException;
+import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.List;
 
 public class GkeOperatorFactory implements OperatorFactory {
 
@@ -49,7 +43,8 @@ public class GkeOperatorFactory implements OperatorFactory {
         return new GkeOperator(this.exec, this.mapper, context);
     }
 
-    private class GkeOperator extends BaseOperator {
+    @VisibleForTesting
+    class GkeOperator extends BaseOperator {
 
         private final CommandExecutor exec;
         private final ObjectMapper mapper;
@@ -111,7 +106,7 @@ public class GkeOperatorFactory implements OperatorFactory {
             return operator.run();
         }
 
-// TODO: auth cli with creential json
+// TODO: auth cli with credential json
 //        private void authCLI(Config params) {
 //            String credentialJson = null;
 //            try {
@@ -183,7 +178,8 @@ public class GkeOperatorFactory implements OperatorFactory {
             return commandConfig;
         }
 
-        private Config generateChildTaskRequestConfig(String cluster, Config parentTaskRequestConfig, Config commandConfig){
+        @VisibleForTesting
+        Config generateChildTaskRequestConfig(String cluster, Config parentTaskRequestConfig, Config commandConfig){
             String commandType = commandConfig.getKeys().get(0);
             Config childTaskRequestConfig = parentTaskRequestConfig.deepCopy();
             childTaskRequestConfig.set("_command", commandConfig.get(commandType, String.class));
@@ -196,7 +192,7 @@ public class GkeOperatorFactory implements OperatorFactory {
                 kubeConfigPath = Paths.get(System.getenv("HOME"), ".kube/config").toString();
             }
 
-            if (childTaskRequestConfig.has("kuberntes")) {
+            if (childTaskRequestConfig.has("kubernetes")) {
                 Config kubenretesConfig = childTaskRequestConfig.getNestedOrGetEmpty("kubernetes");
                 childTaskRequestConfig.set("kube_config_path", kubeConfigPath);
                 childTaskRequestConfig.set("cluster", cluster);
