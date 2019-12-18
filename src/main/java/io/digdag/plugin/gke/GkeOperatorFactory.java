@@ -1,33 +1,27 @@
 package io.digdag.plugin.gke;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Throwables;
+import com.google.common.collect.ImmutableMap;
 import io.digdag.client.config.Config;
 import io.digdag.client.config.ConfigException;
-import com.google.common.collect.ImmutableMap;
+import io.digdag.spi.CommandExecutor;
+import io.digdag.spi.ImmutableTaskRequest;
 import io.digdag.spi.Operator;
 import io.digdag.spi.OperatorContext;
 import io.digdag.spi.OperatorFactory;
-import io.digdag.spi.TaskResult;
 import io.digdag.spi.TaskRequest;
-import io.digdag.spi.ImmutableTaskRequest;
-import io.digdag.spi.TemplateEngine;
-import io.digdag.util.BaseOperator;
-import com.google.inject.Inject;
-import java.io.IOException;
-
-import java.util.Arrays;
-import java.lang.Throwable;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.List;
-import java.util.ArrayList;
-
-import com.google.common.annotations.VisibleForTesting;
-import io.digdag.standards.operator.ShOperatorFactory;
-import io.digdag.standards.operator.RbOperatorFactory;
+import io.digdag.spi.TaskResult;
 import io.digdag.standards.operator.PyOperatorFactory;
-import com.google.common.base.Throwables;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.digdag.spi.CommandExecutor;
+import io.digdag.standards.operator.RbOperatorFactory;
+import io.digdag.standards.operator.ShOperatorFactory;
+import io.digdag.util.BaseOperator;
+
+import java.io.IOException;
+import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.List;
 
 public class GkeOperatorFactory implements OperatorFactory {
 

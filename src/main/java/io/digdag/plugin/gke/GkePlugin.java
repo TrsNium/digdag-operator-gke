@@ -1,16 +1,15 @@
 package io.digdag.plugin.gke;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.digdag.spi.CommandExecutor;
 import io.digdag.spi.OperatorFactory;
 import io.digdag.spi.OperatorProvider;
 import io.digdag.spi.Plugin;
-import io.digdag.spi.TemplateEngine;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.digdag.spi.CommandExecutor;
+
+import javax.inject.Inject;
 
 import java.util.Arrays;
 import java.util.List;
-
-import javax.inject.Inject;
 
 public class GkePlugin implements Plugin {
     @Override

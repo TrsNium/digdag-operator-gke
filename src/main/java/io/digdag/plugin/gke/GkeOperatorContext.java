@@ -1,10 +1,12 @@
 package io.digdag.plugin.gke;
 
-import java.nio.file.Path;
-import io.digdag.spi.PrivilegedVariables;
-import io.digdag.spi.TaskRequest;
-import io.digdag.spi.SecretProvider;
 import io.digdag.spi.OperatorContext;
+import io.digdag.spi.PrivilegedVariables;
+import io.digdag.spi.SecretProvider;
+import io.digdag.spi.TaskRequest;
+
+import java.nio.file.Path;
+
 import static java.util.Objects.requireNonNull;
 
 class GkeOperatorContext

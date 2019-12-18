@@ -1,25 +1,22 @@
 package io.digdag.plugin.gke;
 
-import io.digdag.client.config.Config;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.digdag.spi.CommandExecutor;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableList;
-import io.digdag.util.BaseOperator;
+import io.digdag.client.config.Config;
+import io.digdag.spi.CommandExecutor;
 import io.digdag.spi.OperatorContext;
 import io.digdag.spi.TaskRequest;
-import java.nio.file.Paths;
-
-
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.runners.MockitoJUnitRunner;
+
+import java.nio.file.Paths;
+
+import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.hamcrest.Matchers.is;
-import org.mockito.runners.MockitoJUnitRunner;
 
 @RunWith(MockitoJUnitRunner.class)
 public class GkeOperatorTest
