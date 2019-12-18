@@ -52,7 +52,7 @@ public class GkeOperatorTest
         final GkeOperatorFactory gkeOperatorFactory = new GkeOperatorFactory(this.commandExecutor, this.mapper);
         final GkeOperatorFactory.GkeOperator operator = gkeOperatorFactory.new GkeOperator(this.commandExecutor, this.mapper, this.operatorContext);
 
-        Config childTaskRequestConfig = operator.generateChildTaskRequestConfig(testCluster, testParentConfig, testCommandConfig);
+        final Config childTaskRequestConfig = operator.generateChildTaskRequestConfig(testCluster, testParentConfig, testCommandConfig);
 
 
         String kubeConfigPath = System.getenv("KUBECONFIG");
@@ -60,7 +60,7 @@ public class GkeOperatorTest
           kubeConfigPath = Paths.get(System.getenv("HOME"), ".kube/config").toString();
         }
 
-        Config desiredChildTaskRequestConfig = Config.deserializeFromJackson(this.mapper, this.mapper.createObjectNode())
+        final Config desiredChildTaskRequestConfig = Config.deserializeFromJackson(this.mapper, this.mapper.createObjectNode())
           .set("_command", "echo test")
           .set("_type", "sh")
           .set("kubernetes", ImmutableMap.of("kube_config_path", kubeConfigPath, "cluster", testCluster));
