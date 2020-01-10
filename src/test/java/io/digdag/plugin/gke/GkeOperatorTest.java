@@ -48,22 +48,24 @@ public class GkeOperatorTest
         final Config testCommandConfig = Config.deserializeFromJackson(this.mapper, this.mapper.createObjectNode()).set("sh>", "echo test");
         final Config testParentConfig = Config.deserializeFromJackson(this.mapper, this.mapper.createObjectNode()).set("_command", testCommandConfig).set("_type", "gke");
         final String testCluster = "test";
+        final String testNamespace = "test";
 
         final GkeOperatorFactory gkeOperatorFactory = new GkeOperatorFactory(this.commandExecutor, this.mapper);
         final GkeOperatorFactory.GkeOperator operator = gkeOperatorFactory.new GkeOperator(this.commandExecutor, this.mapper, this.operatorContext);
 
-        final Config childTaskRequestConfig = operator.generateChildTaskRequestConfig(testCluster, testParentConfig, testCommandConfig);
+        final Config childTaskRequestConfig = operator.generateChildTaskRequestConfig(testCluster, testNamespace, testParentConfig, testCommandConfig);
 
 
         String kubeConfigPath = System.getenv("KUBECONFIG");
         if (kubeConfigPath == null) {
           kubeConfigPath = Paths.get(System.getenv("HOME"), ".kube/config").toString();
         }
+        io.fabric8.kubernetes.client.Config kubeConfig = operator.getKubeConfigFromPath(kubeConfigPath);
 
         final Config desiredChildTaskRequestConfig = Config.deserializeFromJackson(this.mapper, this.mapper.createObjectNode())
           .set("_command", "echo test")
           .set("_type", "sh")
-          .set("kubernetes", ImmutableMap.of("kube_config_path", kubeConfigPath, "cluster", testCluster));
+          .set("kubernetes", ImmutableMap.of("master", kubeConfig.getMasterUrl(), "certs_ca_data", kubeConfig.getCaCertData(), "oauth_token", kubeConfig.getOauthToken(), "namespace", testNamespace, "name", testCluster));
 
         assertThat(childTaskRequestConfig, is(desiredChildTaskRequestConfig));
     }

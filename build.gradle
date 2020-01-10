@@ -30,6 +30,7 @@ configurations {
 }
 
 dependencies {
+    compile ('io.fabric8:kubernetes-client:4.6.2')
     provided 'io.digdag:digdag-plugin-utils:' + digdagVersion  // this should be 'compile' once digdag 0.8.2 is released to a built-in repository
     provided 'io.digdag:digdag-core:' + digdagVersion
     compile files('./libs/digdag-standards-0.10.0-SNAPSHOT.jar')
