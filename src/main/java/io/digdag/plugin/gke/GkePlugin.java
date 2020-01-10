@@ -5,6 +5,7 @@ import io.digdag.spi.CommandExecutor;
 import io.digdag.spi.OperatorFactory;
 import io.digdag.spi.OperatorProvider;
 import io.digdag.spi.Plugin;
+import io.digdag.client.config.ConfigFactory;
 
 import javax.inject.Inject;
 
@@ -26,10 +27,12 @@ public class GkePlugin implements Plugin {
         protected CommandExecutor exec;
         @Inject
         protected ObjectMapper mapper;
+        @Inject
+        protected ConfigFactory cf;
 
         @Override
         public List<OperatorFactory> get() {
-            return Arrays.asList(new GkeOperatorFactory(exec, mapper));
+            return Arrays.asList(new GkeOperatorFactory(exec, cf, mapper));
         }
     }
 }
