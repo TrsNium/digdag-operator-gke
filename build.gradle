@@ -10,13 +10,6 @@ version = '0.1.0'
 
 def digdagVersion = '0.9.4'
 
-allprojects {
-  ext {
-    jacksonVersion = "2.10.1"
-    jacksonDatabindVersion = "2.10.1"
-  }
-}
-
 repositories {
     mavenCentral()
     jcenter()
@@ -30,7 +23,6 @@ configurations {
 }
 
 dependencies {
-    compile ('io.fabric8:kubernetes-client:4.6.2')
     provided 'io.digdag:digdag-plugin-utils:' + digdagVersion  // this should be 'compile' once digdag 0.8.2 is released to a built-in repository
     provided 'io.digdag:digdag-core:' + digdagVersion
     compile files('./libs/digdag-standards-0.10.0-SNAPSHOT.jar')
