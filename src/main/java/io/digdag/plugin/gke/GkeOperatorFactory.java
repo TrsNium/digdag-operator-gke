@@ -73,7 +73,7 @@ public class GkeOperatorFactory implements OperatorFactory {
             //}
 
             // Auth GKECluster master with CLI
-            List<String> authGkeCommandList = Arrays.asList("gcloud", "container", "clusters", "get-credentials", cluster, "--zone", zone, "--project", project_id);
+            List<String> authGkeCommandList = Arrays.asList("gcloud", "container", "clusters", "get-credentials", cluster, "--zone", zone, "--project", project_id, "|", "kubectl", "get", "po");
             ProcessBuilder pb = new ProcessBuilder(authGkeCommandList);
             pb.inheritIO();
             try{
