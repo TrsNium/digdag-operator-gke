@@ -80,7 +80,7 @@ public class GkeOperatorFactory implements OperatorFactory {
             //}
 
             // Auth GKECluster master with CLI
-            String authGkeCommand = String.format("gcloud container clusters get-credentials %s --zone %s --project %s && kubectl get po && kubectl config set-context --current --namespace=%", cluster, zone, project_id, namespace);
+            String authGkeCommand = String.format("gcloud container clusters get-credentials %s --zone %s --project %s && kubectl get po && kubectl config set-context --current --namespace=%s", cluster, zone, project_id, namespace);
             ProcessBuilder pb = new ProcessBuilder("bash", "-c", authGkeCommand);
             pb.inheritIO();
             try{
