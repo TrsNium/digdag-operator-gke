@@ -6,6 +6,7 @@ import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableMap;
 import io.digdag.client.config.Config;
 import io.digdag.client.config.ConfigException;
+import io.digdag.client.config.ConfigFactory;
 import io.digdag.spi.CommandExecutor;
 import io.digdag.spi.ImmutableTaskRequest;
 import io.digdag.spi.Operator;
@@ -27,10 +28,12 @@ public class GkeOperatorFactory implements OperatorFactory {
 
     private final CommandExecutor exec;
     private final ObjectMapper mapper;
+    private final ConfigFactory cf;
 
-    public GkeOperatorFactory(CommandExecutor exec, ObjectMapper mapper) {
+    public GkeOperatorFactory(CommandExecutor exec, ConfigFactory cf, ObjectMapper mapper) {
         this.exec = exec;
         this.mapper = mapper;
+        this.cf = cf;
     }
 
     @Override
@@ -40,17 +43,19 @@ public class GkeOperatorFactory implements OperatorFactory {
 
     @Override
     public Operator newOperator(OperatorContext context) {
-        return new GkeOperator(this.exec, this.mapper, context);
+        return new GkeOperator(this.exec, this.cf, this.mapper, context);
     }
 
     @VisibleForTesting
     class GkeOperator extends BaseOperator {
 
         private final CommandExecutor exec;
+        private final ConfigFactory cf;
         private final ObjectMapper mapper;
-        GkeOperator(CommandExecutor exec, ObjectMapper mapper, OperatorContext context) {
+        GkeOperator(CommandExecutor exec, ConfigFactory cf, ObjectMapper mapper, OperatorContext context) {
             super(context);
             this.exec = exec;
+            this.cf = cf;
             this.mapper = mapper;
         }
 
@@ -63,14 +68,15 @@ public class GkeOperatorFactory implements OperatorFactory {
             String cluster = params.get("cluster", String.class);
             String project_id = params.get("project_id", String.class);
             String zone = params.get("zone", String.class);
+            String namespace = params.get("namespace", String.class, "default");
 
             //if (params.has("credential_json") || params.has("credential_json_path")) {
              //   authCLI(params);
             //}
 
             // Auth GKECluster master with CLI
-            List<String> authGkeCommandList = Arrays.asList("gcloud", "container", "clusters", "get-credentials", cluster, "--zone", zone, "--project", project_id);
-            ProcessBuilder pb = new ProcessBuilder(authGkeCommandList);
+            String authGkeCommand = String.format("gcloud container clusters get-credentials %s --zone %s --project %s && kubectl get po && kubectl config set-context --current --namespace=%s", cluster, zone, project_id, namespace);
+            ProcessBuilder pb = new ProcessBuilder("bash", "-c", authGkeCommand);
             pb.inheritIO();
             try{
                 final Process p = pb.start();
@@ -194,11 +200,11 @@ public class GkeOperatorFactory implements OperatorFactory {
 
             if (childTaskRequestConfig.has("kubernetes")) {
                 Config kubenretesConfig = childTaskRequestConfig.getNestedOrGetEmpty("kubernetes");
-                childTaskRequestConfig.set("kube_config_path", kubeConfigPath);
-                childTaskRequestConfig.set("cluster", cluster);
+                kubenretesConfig.set("name", cluster);
+                kubenretesConfig.set("kube_config_path", kubeConfigPath);
                 childTaskRequestConfig.set("kubernetes", kubenretesConfig);
             } else {
-                childTaskRequestConfig.set("kubernetes", ImmutableMap.of("kube_config_path", kubeConfigPath, "cluster", cluster));
+                childTaskRequestConfig.set("kubernetes", cf.create().set("name", cluster).set("kube_config_path", kubeConfigPath));
             }
             return childTaskRequestConfig;
         }

@@ -3,6 +3,7 @@ package io.digdag.plugin.gke;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
 import io.digdag.client.config.Config;
+import io.digdag.client.config.ConfigFactory;
 import io.digdag.spi.CommandExecutor;
 import io.digdag.spi.OperatorContext;
 import io.digdag.spi.TaskRequest;
@@ -22,6 +23,7 @@ import static org.mockito.Mockito.when;
 public class GkeOperatorTest
 {
     protected ObjectMapper mapper;
+    protected ConfigFactory cf;
     protected CommandExecutor commandExecutor;
     protected OperatorContext operatorContext;
 
@@ -30,6 +32,7 @@ public class GkeOperatorTest
             throws Exception
     {
         mapper = new ObjectMapper();
+        cf = new ConfigFactory(mapper);
         commandExecutor = mock(CommandExecutor.class);
         operatorContext = mock(OperatorContext.class);
         TaskRequest taskRequest = mock(TaskRequest.class);
@@ -49,8 +52,8 @@ public class GkeOperatorTest
         final Config testParentConfig = Config.deserializeFromJackson(this.mapper, this.mapper.createObjectNode()).set("_command", testCommandConfig).set("_type", "gke");
         final String testCluster = "test";
 
-        final GkeOperatorFactory gkeOperatorFactory = new GkeOperatorFactory(this.commandExecutor, this.mapper);
-        final GkeOperatorFactory.GkeOperator operator = gkeOperatorFactory.new GkeOperator(this.commandExecutor, this.mapper, this.operatorContext);
+        final GkeOperatorFactory gkeOperatorFactory = new GkeOperatorFactory(this.commandExecutor, this.cf, this.mapper);
+        final GkeOperatorFactory.GkeOperator operator = gkeOperatorFactory.new GkeOperator(this.commandExecutor, this.cf, this.mapper, this.operatorContext);
 
         final Config childTaskRequestConfig = operator.generateChildTaskRequestConfig(testCluster, testParentConfig, testCommandConfig);
 
@@ -63,7 +66,7 @@ public class GkeOperatorTest
         final Config desiredChildTaskRequestConfig = Config.deserializeFromJackson(this.mapper, this.mapper.createObjectNode())
           .set("_command", "echo test")
           .set("_type", "sh")
-          .set("kubernetes", ImmutableMap.of("kube_config_path", kubeConfigPath, "cluster", testCluster));
+          .set("kubernetes", ImmutableMap.of("kube_config_path", kubeConfigPath, "name", testCluster));
 
         assertThat(childTaskRequestConfig, is(desiredChildTaskRequestConfig));
     }

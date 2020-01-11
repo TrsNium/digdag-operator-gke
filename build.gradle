@@ -8,14 +8,7 @@ apply plugin: 'idea'
 group = 'io.digdag.plugin'
 version = '0.1.0'
 
-def digdagVersion = '0.9.2'
-
-allprojects {
-  ext {
-    jacksonVersion = "2.9.10"
-    jacksonDatabindVersion = "2.9.10"
-  }
-}
+def digdagVersion = '0.9.4'
 
 repositories {
     mavenCentral()
