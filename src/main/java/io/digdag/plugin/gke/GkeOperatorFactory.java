@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class GkeOperatorFactory implements OperatorFactory {
 
@@ -61,17 +62,17 @@ public class GkeOperatorFactory implements OperatorFactory {
 
         @Override
         public TaskResult runTask() {
-            Config params = request.getConfig().mergeDefault(
+            Config requestConfig = request.getConfig().mergeDefault(
                 request.getConfig().getNestedOrGetEmpty("gke"));
 
 
-            String cluster = params.get("cluster", String.class);
-            String project_id = params.get("project_id", String.class);
-            String zone = params.get("zone", String.class);
-            String namespace = params.get("namespace", String.class, "default");
+            String cluster = requestConfig.get("cluster", String.class);
+            String project_id = requestConfig.get("project_id", String.class);
+            String zone = requestConfig.get("zone", String.class);
+            String namespace = requestConfig.get("namespace", String.class, "default");
 
-            //if (params.has("credential_json") || params.has("credential_json_path")) {
-             //   authCLI(params);
+            //if (requestConfig.has("credential_json") || requestConfig.has("credential_json_path")) {
+             //   authCLI(requestConfig);
             //}
 
             // Auth GKECluster master with CLI
@@ -86,7 +87,7 @@ public class GkeOperatorFactory implements OperatorFactory {
                 throw Throwables.propagate(e);
             }
 
-            TaskRequest childTaskRequest = generateChildTaskRequest(cluster, request, params);
+            TaskRequest childTaskRequest = generateChildTaskRequest(cluster, request, requestConfig);
             // gnerate OperatorContext via DefaultOperatorContext
             GkeOperatorContext internalOperatorContext = new GkeOperatorContext(
                     context.getProjectPath(),
@@ -95,7 +96,7 @@ public class GkeOperatorFactory implements OperatorFactory {
                     context.getPrivilegedVariables());
 
             Operator operator = null;
-            switch (getChildCommandType(params)) {
+            switch (requestConfig.get("_type", String.class)) {
                 case "sh":
                     ShOperatorFactory shOperatorFactory = new ShOperatorFactory(exec);
                     operator = shOperatorFactory.newOperator(internalOperatorContext);
@@ -142,16 +143,14 @@ public class GkeOperatorFactory implements OperatorFactory {
 //            }
 //        }
 
-        private String getChildCommandType(Config taskRequestConfig) {
-            Config commandConfig = taskRequestConfig.getNestedOrGetEmpty("_command");
-            String commandType = commandConfig.getKeys().get(0);
-            return commandType.substring(0, commandType.length()-1);
-        }
-
         private TaskRequest generateChildTaskRequest(String cluster, TaskRequest parentTaskRequest, Config parentTaskRequestConfig) {
             Config commandConfig = parentTaskRequestConfig.getNestedOrGetEmpty("_command");
-            Config validatedCommandConfig = validateCommandConfig(commandConfig);
-            Config childTaskRequestConfig = generateChildTaskRequestConfig(cluster, parentTaskRequestConfig, validatedCommandConfig);
+            Config childTaskRequestConfig = generateChildTaskRequestConfig(commandConfig);
+            Config mergedChildTaskRequestConfig = parentTaskRequestConfig.merge(childTaskRequestConfig);
+            Config injectedKubernetesTaskRequestConfig = injectKubernetesConfig(cluster, mergedChildTaskRequestConfig);
+            //System.out.println("============================================");
+            //System.out.println(injectedKubernetesTaskRequestConfig);
+            //System.out.println("============================================");
             return ImmutableTaskRequest.builder()
                 .siteId(parentTaskRequest.getSiteId())
                 .projectId(parentTaskRequest.getProjectId())
@@ -166,47 +165,55 @@ public class GkeOperatorFactory implements OperatorFactory {
                 .sessionUuid(parentTaskRequest.getSessionUuid())
                 .sessionTime(parentTaskRequest.getSessionTime())
                 .createdAt(parentTaskRequest.getCreatedAt())
-                .config(childTaskRequestConfig)
+                .config(injectedKubernetesTaskRequestConfig)
                 .localConfig(parentTaskRequest.getLocalConfig())
                 .lastStateParams(parentTaskRequest.getLastStateParams())
                 .build();
         }
 
-        private Config validateCommandConfig(Config commandConfig) {
-            if (commandConfig.getKeys().size() > 1) {
+        private Config generateChildTaskRequestConfig(Config commandConfig) {
+            List<String> filterdKeys = commandConfig.getKeys()
+                .stream()
+                .filter((key) -> key.endsWith(">"))
+                .collect(Collectors.toList());
+
+            if (filterdKeys.size() > 1) {
                 throw new ConfigException("too many operator.");
+            } else if (filterdKeys.size() == 0) {
+                throw new ConfigException("not found operator.");
             }
 
-            String commandType = commandConfig.getKeys().get(0);
+            String commandType = filterdKeys.get(0);
             if (! (commandType.equals("sh>") || commandType.equals("rb>") || commandType.equals("py>"))) {
                 throw new ConfigException("GkeOperator support only sh>, rb> and py>.");
+            }
+
+            commandConfig.set("_command", commandConfig.get(commandType, String.class));
+            // exclude > (end of commandType String).
+            commandConfig.set("_type", commandType.substring(0, commandType.length()-1));
+            if (commandConfig.has("_export")) {
+                commandConfig.merge(commandConfig.getNested("_export"));
             }
             return commandConfig;
         }
 
         @VisibleForTesting
-        Config generateChildTaskRequestConfig(String cluster, Config parentTaskRequestConfig, Config commandConfig){
-            String commandType = commandConfig.getKeys().get(0);
-            Config childTaskRequestConfig = parentTaskRequestConfig.deepCopy();
-            childTaskRequestConfig.set("_command", commandConfig.get(commandType, String.class));
-            // exclude > (end of commandType String).
-            childTaskRequestConfig.set("_type", commandType.substring(0, commandType.length()-1));
-
+        Config injectKubernetesConfig(String cluster, Config taskRequestConfig){
             // set information for kubernetes command executor.
             String kubeConfigPath = System.getenv("KUBECONFIG");
             if (kubeConfigPath == null) {
                 kubeConfigPath = Paths.get(System.getenv("HOME"), ".kube/config").toString();
             }
 
-            if (childTaskRequestConfig.has("kubernetes")) {
-                Config kubenretesConfig = childTaskRequestConfig.getNestedOrGetEmpty("kubernetes");
+            if (taskRequestConfig.has("kubernetes")) {
+                Config kubenretesConfig = taskRequestConfig.getNestedOrGetEmpty("kubernetes");
                 kubenretesConfig.set("name", cluster);
                 kubenretesConfig.set("kube_config_path", kubeConfigPath);
-                childTaskRequestConfig.set("kubernetes", kubenretesConfig);
+                taskRequestConfig.set("kubernetes", kubenretesConfig);
             } else {
-                childTaskRequestConfig.set("kubernetes", cf.create().set("name", cluster).set("kube_config_path", kubeConfigPath));
+                taskRequestConfig.set("kubernetes", cf.create().set("name", cluster).set("kube_config_path", kubeConfigPath));
             }
-            return childTaskRequestConfig;
+            return taskRequestConfig;
         }
     }
 }
