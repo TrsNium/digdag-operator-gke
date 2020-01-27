@@ -21,6 +21,7 @@ import io.digdag.util.BaseOperator;
 
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -71,9 +72,9 @@ public class GkeOperatorFactory implements OperatorFactory {
             String zone = requestConfig.get("zone", String.class);
             String namespace = requestConfig.get("namespace", String.class, "default");
 
-            //if (requestConfig.has("credential_json") || requestConfig.has("credential_json_path")) {
-             //   authCLI(requestConfig);
-            //}
+            if (requestConfig.has("credential_json") || requestConfig.has("credential_json_path")) {
+                authCLI(requestConfig);
+            }
 
             // Auth GKECluster master with CLI
             String authGkeCommand = String.format("gcloud container clusters get-credentials %s --zone %s --project %s && kubectl get po && kubectl config set-context --current --namespace=%s", cluster, zone, project_id, namespace);
@@ -113,44 +114,39 @@ public class GkeOperatorFactory implements OperatorFactory {
             return operator.run();
         }
 
-// TODO: auth cli with credential json
-//        private void authCLI(Config params) {
-//            String credentialJson = null;
-//            try {
-//                if (params.has("credential_json")){
-//                    credentialJson = params.get("credential_json", String.class).replaceAll("\\n", "");
-//                }
-//                else if (params.has("credential_json_path")){
-//                    String credentialPath = params.get("credential_json_path", String.class);
-//                    credentialJson = new String(Files.readAllBytes(Paths.get(credentialPath))).replaceAll("\\n", "");
-//                }
-//            }
-//            catch (IOException e) {
-//                throw new ConfigException("Please check gcp credential file and file path.");
-//            }
-//
-//            String authCommand = String.format("echo '%s' | openssl base64 -d -A |  gcloud auth activate-service-account --key-file=-", credentialJson);
-//            System.out.println(authCommand);
-//            List<String> authCommandList = Arrays.asList("/bin/bash", "-c", authCommand);
-//            ProcessBuilder pb = new ProcessBuilder(authCommandList);
-//            pb.inheritIO();
-//            try {
-//                final Process p = pb.start();
-//                p.waitFor();
-//            }
-//            catch (IOException | InterruptedException e) {
-//                throw Throwables.propagate(e);
-//            }
-//        }
+        private void authCLI(Config requestConfig) {
+            String credentialJson = null;
+            try {
+                if (requestConfig.has("credential_json")){
+                    credentialJson = requestConfig.get("credential_json", String.class).replaceAll("\n", "");
+                }
+                else if (requestConfig.has("credential_json_path")){
+                    String credentialPath = requestConfig.get("credential_json_path", String.class);
+                    credentialJson = new String(Files.readAllBytes(Paths.get(credentialPath))).replaceAll("\n", "");
+                }
+            }
+            catch (IOException e) {
+                throw new ConfigException("Please check gcp credential file and file path.");
+            }
+
+            String authCommand = String.format("echo '%s' |  gcloud auth activate-service-account --key-file=-", credentialJson);
+            List<String> authCommandList = Arrays.asList("/bin/bash", "-c", authCommand);
+            ProcessBuilder pb = new ProcessBuilder(authCommandList);
+            pb.inheritIO();
+            try {
+                final Process p = pb.start();
+                p.waitFor();
+            }
+            catch (IOException | InterruptedException e) {
+                throw Throwables.propagate(e);
+            }
+        }
 
         private TaskRequest generateChildTaskRequest(String cluster, TaskRequest parentTaskRequest, Config parentTaskRequestConfig) {
             Config commandConfig = parentTaskRequestConfig.getNestedOrGetEmpty("_command");
             Config childTaskRequestConfig = generateChildTaskRequestConfig(commandConfig);
             Config mergedChildTaskRequestConfig = parentTaskRequestConfig.merge(childTaskRequestConfig);
             Config injectedKubernetesTaskRequestConfig = injectKubernetesConfig(cluster, mergedChildTaskRequestConfig);
-            //System.out.println("============================================");
-            //System.out.println(injectedKubernetesTaskRequestConfig);
-            //System.out.println("============================================");
             return ImmutableTaskRequest.builder()
                 .siteId(parentTaskRequest.getSiteId())
                 .projectId(parentTaskRequest.getProjectId())
