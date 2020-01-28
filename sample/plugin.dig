@@ -6,9 +6,41 @@ _export:
     dependencies:
       - io.digdag.plugin:digdag-plugin-example:0.1.3
 
-+step1:
+# Authenticate using a service account associated with an instance
++test1:
   cluster: test-cluster
   project_id: test
   zone: asia-east1-a
   gke>:
-    sh>: echo hoge huga
+    _retry: 3
+    sh>: echo test1
+
+# Authenticate using service account credentials
++test2:
+  credential_json: {"type": "service_account","pr......."}
+  cluster: test-cluster
+  project_id: test
+  zone: asia-east1-a
+  gke>:
+    _export:
+      docker:
+        image: specific_docker_image:latest
+    sh>: echo test2
+
+# Authenticate using service account credentials
++test3:
+  credential_json_path: /tmp/gcp.credential
+  cluster: test-cluster
+  project_id: test
+  zone: asia-east1-a
+  gke>:
+    sh>: echo test3
+
+# Obtain and authenticate the service account credential in the digdag secret by key
++test3:
+  credential_json_from_secret_key: gcp.credential
+  cluster: test-cluster
+  project_id: test
+  zone: asia-east1-a
+  gke>:
+    sh>: echo test3
