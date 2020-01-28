@@ -16,6 +16,8 @@ import io.digdag.spi.ImmutableTaskRequest;
 import io.digdag.spi.Operator;
 import io.digdag.spi.OperatorContext;
 import io.digdag.spi.OperatorFactory;
+import io.digdag.spi.SecretProvider;
+import io.digdag.spi.SecretNotFoundException;
 import io.digdag.spi.TaskRequest;
 import io.digdag.spi.TaskResult;
 import io.digdag.standards.operator.PyOperatorFactory;
@@ -55,8 +57,10 @@ public class GkeOperatorFactory implements OperatorFactory {
 
         private final CommandExecutor exec;
         private final ConfigFactory cf;
+        private final OperatorContext context;
         GkeOperator(CommandExecutor exec, ConfigFactory cf, OperatorContext context) {
             super(context);
+            this.context = context;
             this.exec = exec;
             this.cf = cf;
         }
@@ -72,7 +76,7 @@ public class GkeOperatorFactory implements OperatorFactory {
             String zone = requestConfig.get("zone", String.class);
             String namespace = requestConfig.get("namespace", String.class, "default");
 
-            if (requestConfig.has("credential_json") || requestConfig.has("credential_json_path")) {
+            if (requestConfig.has("credential_json") || requestConfig.has("credential_json_path") || requestConfig.has("credential_json_from_secret_key")) {
                 authCLI(requestConfig);
             }
 
@@ -133,9 +137,16 @@ public class GkeOperatorFactory implements OperatorFactory {
                     String credentialPath = requestConfig.get("credential_json_path", String.class);
                     credentialJson = new String(Files.readAllBytes(Paths.get(credentialPath))).replaceAll("\n", "");
                 }
+                else if (requestConfig.has("credential_json_from_secret_key")){
+                    String credentialSecretKey = requestConfig.get("credential_json_from_secret_key", String.class);
+                    credentialJson = context.getSecrets().getSecret(credentialSecretKey);
+                }
             }
             catch (IOException e) {
                 throw new ConfigException("Please check gcp credential file and file path.");
+            }
+            catch (SecretNotFoundException e) {
+                throw new ConfigException(String.format("Could not access to secret:%s", requestConfig.get("credential_json_from_secret_key", String.class)));
             }
 
             String authCommand = String.format("echo '%s' |  gcloud auth activate-service-account --key-file=-", credentialJson);
