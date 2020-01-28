@@ -16,4 +16,3 @@ digdag selfupdate
 digdag run --project sample plugin.dig -p repos=`pwd`/build/repo
 ```
 
-You'll find the result of the task in `./sample/example.out`.
