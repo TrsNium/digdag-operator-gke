@@ -9,6 +9,10 @@ group = 'io.digdag.plugin'
 version = '0.1.0'
 
 def digdagVersion = '0.9.4'
+def jacksonVersion = "2.9.10"
+def jacksonDatabindVersion = "2.9.10"
+def guavaVersion = "19.0"
+
 
 repositories {
     mavenCentral()
@@ -23,9 +27,20 @@ configurations {
 }
 
 dependencies {
-    provided 'io.digdag:digdag-plugin-utils:' + digdagVersion  // this should be 'compile' once digdag 0.8.2 is released to a built-in repository
-    provided 'io.digdag:digdag-core:' + digdagVersion
-    compile files('./libs/digdag-standards-0.10.0-SNAPSHOT.jar')
+    provided ('io.digdag:digdag-plugin-utils:0.9.3') { // this should be 'compile' once digdag 0.8.2 is released to a built-in repository {
+        exclude group: 'com.google.guava', module: 'guava'
+        exclude group: 'javax.inject', module: 'javax.inject'
+        exclude group: 'com.fasterxml.jackson.core', module: 'jackson-annotations'
+        exclude group: 'com.fasterxml.jackson.core', module: 'jackson-core'
+        exclude group: 'com.fasterxml.jackson.core', module: 'jackson-databind'
+    }
+    provided files('./libs/digdag-standards-0.10.0-SNAPSHOT.jar')
+
+    provided "com.google.guava:guava:19.0"
+    provided 'javax.inject:javax.inject:1'
+    provided "com.fasterxml.jackson.core:jackson-annotations:${jacksonVersion}"
+    provided "com.fasterxml.jackson.core:jackson-core:${jacksonVersion}"
+    provided "com.fasterxml.jackson.core:jackson-databind:${jacksonDatabindVersion}"
 
     testCompile 'junit:junit:4.12'
     testCompile 'org.mockito:mockito-core:1.10.19'

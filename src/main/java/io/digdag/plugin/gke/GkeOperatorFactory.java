@@ -1,6 +1,10 @@
 package io.digdag.plugin.gke;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.InjectableValues;
+import com.fasterxml.jackson.datatype.guava.GuavaModule;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import io.digdag.client.api.JacksonTimeModule;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableMap;
@@ -29,12 +33,10 @@ import java.util.stream.Collectors;
 public class GkeOperatorFactory implements OperatorFactory {
 
     private final CommandExecutor exec;
-    private final ObjectMapper mapper;
     private final ConfigFactory cf;
 
-    public GkeOperatorFactory(CommandExecutor exec, ConfigFactory cf, ObjectMapper mapper) {
+    public GkeOperatorFactory(CommandExecutor exec, ConfigFactory cf) {
         this.exec = exec;
-        this.mapper = mapper;
         this.cf = cf;
     }
 
@@ -45,7 +47,7 @@ public class GkeOperatorFactory implements OperatorFactory {
 
     @Override
     public Operator newOperator(OperatorContext context) {
-        return new GkeOperator(this.exec, this.cf, this.mapper, context);
+        return new GkeOperator(this.exec, this.cf, context);
     }
 
     @VisibleForTesting
@@ -53,12 +55,10 @@ public class GkeOperatorFactory implements OperatorFactory {
 
         private final CommandExecutor exec;
         private final ConfigFactory cf;
-        private final ObjectMapper mapper;
-        GkeOperator(CommandExecutor exec, ConfigFactory cf, ObjectMapper mapper, OperatorContext context) {
+        GkeOperator(CommandExecutor exec, ConfigFactory cf, OperatorContext context) {
             super(context);
             this.exec = exec;
             this.cf = cf;
-            this.mapper = mapper;
         }
 
         @Override
@@ -95,6 +95,15 @@ public class GkeOperatorFactory implements OperatorFactory {
                     childTaskRequest,
                     context.getSecrets(),
                     context.getPrivilegedVariables());
+
+            ObjectMapper mapper = new ObjectMapper();
+            mapper.registerModule(new GuavaModule());
+            mapper.registerModule(new JacksonTimeModule());
+            mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+
+            InjectableValues.Std injectableValues = new InjectableValues.Std();
+            injectableValues.addValue(ObjectMapper.class, mapper);
+            mapper.setInjectableValues(injectableValues);
 
             Operator operator = null;
             switch (requestConfig.get("_type", String.class)) {

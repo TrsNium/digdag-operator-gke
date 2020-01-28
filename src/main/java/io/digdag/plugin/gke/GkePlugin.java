@@ -26,13 +26,11 @@ public class GkePlugin implements Plugin {
         @Inject
         protected CommandExecutor exec;
         @Inject
-        protected ObjectMapper mapper;
-        @Inject
         protected ConfigFactory cf;
 
         @Override
         public List<OperatorFactory> get() {
-            return Arrays.asList(new GkeOperatorFactory(exec, cf, mapper));
+            return Arrays.asList(new GkeOperatorFactory(exec, cf));
         }
     }
 }
