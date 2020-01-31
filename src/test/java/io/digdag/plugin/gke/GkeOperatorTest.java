@@ -1,7 +1,10 @@
 package io.digdag.plugin.gke;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.guava.GuavaModule;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.google.common.collect.ImmutableMap;
+import io.digdag.client.api.JacksonTimeModule;
 import io.digdag.client.config.Config;
 import io.digdag.client.config.ConfigFactory;
 import io.digdag.spi.CommandExecutor;
@@ -32,6 +35,9 @@ public class GkeOperatorTest
             throws Exception
     {
         mapper = new ObjectMapper();
+        mapper.registerModule(new GuavaModule());
+        mapper.registerModule(new JacksonTimeModule());
+        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         cf = new ConfigFactory(mapper);
         commandExecutor = mock(CommandExecutor.class);
         operatorContext = mock(OperatorContext.class);
@@ -52,22 +58,28 @@ public class GkeOperatorTest
             .set("_command", "echo test")
             .set("_type", "sh");
         final String testCluster = "test";
+        final String namespace = "test";
 
-        final GkeOperatorFactory gkeOperatorFactory = new GkeOperatorFactory(this.commandExecutor, this.cf, this.mapper);
-        final GkeOperatorFactory.GkeOperator operator = gkeOperatorFactory.new GkeOperator(this.commandExecutor, this.cf, this.mapper, this.operatorContext);
+        final GkeOperatorFactory gkeOperatorFactory = new GkeOperatorFactory(this.commandExecutor, this.cf);
+        final GkeOperatorFactory.GkeOperator operator = gkeOperatorFactory.new GkeOperator(this.commandExecutor, this.cf, this.operatorContext);
 
-        final Config childTaskRequestConfig = operator.injectKubernetesConfig(testCluster, testCommandConfig);
+        final Config childTaskRequestConfig = operator.injectKubernetesConfig(testCluster, namespace, testCommandConfig);
 
 
         String kubeConfigPath = System.getenv("KUBECONFIG");
         if (kubeConfigPath == null) {
           kubeConfigPath = Paths.get(System.getenv("HOME"), ".kube/config").toString();
         }
-
-        final Config desiredChildTaskRequestConfig = Config.deserializeFromJackson(this.mapper, this.mapper.createObjectNode())
-          .set("_command", "echo test")
-          .set("_type", "sh")
-          .set("kubernetes", ImmutableMap.of("kube_config_path", kubeConfigPath, "name", testCluster));
+        io.fabric8.kubernetes.client.Config kubeConfig = operator.getKubeConfigFromPath(kubeConfigPath);
+        final Config desiredChildTaskRequestConfig = cf.create()
+            .set("_command", "echo test")
+            .set("_type", "sh")
+            .set("kubernetes", cf.create()
+                .set("name", testCluster)
+                .set("master", kubeConfig.getMasterUrl())
+                .set("certs_ca_data", kubeConfig.getCaCertData())
+                .set("oauth_token", kubeConfig.getOauthToken())
+                .set("namespace", namespace));
 
         assertThat(childTaskRequestConfig, is(desiredChildTaskRequestConfig));
     }

@@ -36,8 +36,9 @@ dependencies {
     }
     provided files('./libs/digdag-standards-0.10.0-SNAPSHOT.jar')
 
+    provided 'io.fabric8:kubernetes-client:4.6.2'
     provided "com.google.guava:guava:19.0"
-    provided 'javax.inject:javax.inject:1'
+    provided "javax.inject:javax.inject:1"
     provided "com.fasterxml.jackson.core:jackson-annotations:${jacksonVersion}"
     provided "com.fasterxml.jackson.core:jackson-core:${jacksonVersion}"
     provided "com.fasterxml.jackson.core:jackson-databind:${jacksonDatabindVersion}"
