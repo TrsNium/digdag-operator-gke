@@ -26,6 +26,8 @@ import io.digdag.standards.operator.ShOperatorFactory;
 import io.digdag.util.BaseOperator;
 
 import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.Files;
 import java.util.Arrays;
@@ -92,7 +94,7 @@ public class GkeOperatorFactory implements OperatorFactory {
                 throw Throwables.propagate(e);
             }
 
-            TaskRequest childTaskRequest = generateChildTaskRequest(cluster, request, requestConfig);
+            TaskRequest childTaskRequest = generateChildTaskRequest(cluster, namespace, request, requestConfig);
             // gnerate OperatorContext via DefaultOperatorContext
             GkeOperatorContext internalOperatorContext = new GkeOperatorContext(
                     context.getProjectPath(),
@@ -124,7 +126,7 @@ public class GkeOperatorFactory implements OperatorFactory {
                     operator = pyOperatorFactory.newOperator(internalOperatorContext);
                     break;
             }
-            return operator.run();
+          return operator.run();
         }
 
         private void authCLI(Config requestConfig) {
@@ -162,11 +164,11 @@ public class GkeOperatorFactory implements OperatorFactory {
             }
         }
 
-        private TaskRequest generateChildTaskRequest(String cluster, TaskRequest parentTaskRequest, Config parentTaskRequestConfig) {
+        private TaskRequest generateChildTaskRequest(String cluster, String namespace, TaskRequest parentTaskRequest, Config parentTaskRequestConfig) {
             Config commandConfig = parentTaskRequestConfig.getNestedOrGetEmpty("_command");
             Config childTaskRequestConfig = generateChildTaskRequestConfig(commandConfig);
             Config mergedChildTaskRequestConfig = parentTaskRequestConfig.merge(childTaskRequestConfig);
-            Config injectedKubernetesTaskRequestConfig = injectKubernetesConfig(cluster, mergedChildTaskRequestConfig);
+            Config injectedKubernetesTaskRequestConfig = injectKubernetesConfig(cluster, namespace, mergedChildTaskRequestConfig);
             return ImmutableTaskRequest.builder()
                 .siteId(parentTaskRequest.getSiteId())
                 .projectId(parentTaskRequest.getProjectId())
@@ -214,22 +216,42 @@ public class GkeOperatorFactory implements OperatorFactory {
         }
 
         @VisibleForTesting
-        Config injectKubernetesConfig(String cluster, Config taskRequestConfig){
+        Config injectKubernetesConfig(String cluster, String namespace, Config taskRequestConfig){
             // set information for kubernetes command executor.
             String kubeConfigPath = System.getenv("KUBECONFIG");
             if (kubeConfigPath == null) {
                 kubeConfigPath = Paths.get(System.getenv("HOME"), ".kube/config").toString();
             }
 
+            io.fabric8.kubernetes.client.Config kubeConfig = getKubeConfigFromPath(kubeConfigPath);
             if (taskRequestConfig.has("kubernetes")) {
                 Config kubenretesConfig = taskRequestConfig.getNestedOrGetEmpty("kubernetes");
                 kubenretesConfig.set("name", cluster);
-                kubenretesConfig.set("kube_config_path", kubeConfigPath);
+                kubenretesConfig.set("master", kubeConfig.getMasterUrl());
+                kubenretesConfig.set("certs_ca_data", kubeConfig.getCaCertData());
+                kubenretesConfig.set("oauth_token", kubeConfig.getOauthToken());
+                kubenretesConfig.set("namespace", namespace);
                 taskRequestConfig.set("kubernetes", kubenretesConfig);
             } else {
-                taskRequestConfig.set("kubernetes", cf.create().set("name", cluster).set("kube_config_path", kubeConfigPath));
+                taskRequestConfig.set("kubernetes", cf.create()
+                    .set("name", cluster)
+                    .set("master", kubeConfig.getMasterUrl())
+                    .set("certs_ca_data", kubeConfig.getCaCertData())
+                    .set("oauth_token", kubeConfig.getOauthToken())
+                    .set("namespace", namespace));
             }
             return taskRequestConfig;
+        }
+
+        io.fabric8.kubernetes.client.Config getKubeConfigFromPath(String path)
+        {
+            try {
+                final Path kubeConfigPath = Paths.get(path);
+                final String kubeConfigContents = new String(Files.readAllBytes(kubeConfigPath), Charset.forName("UTF-8"));
+                return io.fabric8.kubernetes.client.Config.fromKubeconfig(kubeConfigContents);
+            } catch (java.io.IOException e) {
+                throw new ConfigException("Could not read kubeConfig, check kube_config_path.");
+            }
         }
     }
 }
